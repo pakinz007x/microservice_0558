@@ -5,35 +5,17 @@ from datetime import datetime
 from decimal import Decimal
 
 dynamodb = boto3.resource('dynamodb')
-# อ้างอิงตาราง
 table_data = dynamodb.Table('DisasterRequests')
 table_counter = dynamodb.Table('Counters')
 
-
-def calculate_priority(incident_type, description):
-    # กำหนดคะแนนพื้นฐานตามความรุนแรงของประเภทภัยพิบัติ
-    base_scores = {
-        'สึนามิ': 70,       
-        'น้ำท่วม': 60,  
-        'ไฟไหม้': 60,
-        'พายุ': 50,      
-        'ดินถล่ม': 40,    
-    }
-    
-    # เริ่มต้นคะแนนจากประเภทภัย (ถ้าไม่ระบุให้ 20)
-    score = base_scores.get(incident_type, 20)
-
-    # จำกัดคะแนนไม่ให้เกิน 100
-    return min(score, 100)
-
 def lambda_handler(event, context):
+    trace_id = context.aws_request_id
     try:
         body = json.loads(event.get('body', '{}'))
         incident_type = body.get('incident_type', 'General')
         description = body.get('description', 'ไม่มีรายละเอียด')
         latitude = Decimal(str(body.get('latitude', 0.0)))
         longitude = Decimal(str(body.get('longitude', 0.0)))
-        priority_score = calculate_priority(incident_type, description)
         
         # 1. รันเลข ID ใหม่จากตาราง Counter
         # ADD 1 ให้กับ last_value และคืนค่าใหม่กลับมาทันที
@@ -54,9 +36,10 @@ def lambda_handler(event, context):
         # 4. เตรียมข้อมูลบันทึก
         item = {
             'request_id': auto_request_id,
+            'trace_id': trace_id,
             'incident_type': incident_type,
             'description': description,
-            'priority_score': Decimal(str(priority_score)),
+            'priority_score': Decimal('0'),
             'status': 'New',
             'latitude': latitude,
             'longitude': longitude,
@@ -65,19 +48,31 @@ def lambda_handler(event, context):
         }
         
         table_data.put_item(Item=item)
+
+        print(json.dumps({
+            "operation": "SUBMIT_REQUEST",
+            "request_id": auto_request_id,
+            "trace_id": trace_id,
+            "status": "SUCCESS"
+        }))
         
         return {
             'statusCode': 201,
             'headers': {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+                'Access-Control-Allow-Origin': '*',
+                'X-Trace-Id': trace_id
             },
             'body': json.dumps({
                 'message': 'บันทึกสำเร็จ',
-                'request_id': auto_request_id
+                'request_id': auto_request_id,
+                'trace_id': trace_id
             }, ensure_ascii=False)
         }
         
     except Exception as e:
-        print(e)
-        return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+        print(json.dumps({"operation": "SUBMIT_ERROR", "trace_id": trace_id, "error": str(e)}))
+        return {
+            'statusCode': 500, 
+            'body': json.dumps({'error': str(e), 'trace_id': trace_id})
+        }

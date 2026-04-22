@@ -14,6 +14,7 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('DisasterRequests')
 
 def lambda_handler(event, context):
+    current_trace_id = context.aws_request_id
     try:
         # 1. ดึง ID จาก URL Path (เช่น /requests/req_001)
         path_params = event.get('pathParameters')
@@ -54,18 +55,31 @@ def lambda_handler(event, context):
             update_params['ExpressionAttributeNames'] = attr_names
         # 3. อัปเดตลงฐานข้อมูล
         response = table.update_item(**update_params)
+
+        print(json.dumps({
+            "operation": "UPDATE_REQUEST",
+            "target_request_id": req_id,
+            "trace_id": current_trace_id,
+            "status": "SUCCESS"
+        }))
         
         return {
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+                'Access-Control-Allow-Origin': '*',
+                'X-Trace-Id': current_trace_id
             },
             'body': json.dumps({
                 'message': 'Update Successful',
+                'trace_id': current_trace_id,
                 'data': response.get('Attributes')
             }, cls=DecimalEncoder, ensure_ascii=False)
         }
 
     except Exception as e:
-        return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+        print(json.dumps({"operation": "UPDATE_ERROR", "trace_id": current_trace_id, "error": str(e)}))
+        return {
+            'statusCode': 500, 
+            'body': json.dumps({'error': str(e), 'trace_id': current_trace_id}, indent=2)
+        }

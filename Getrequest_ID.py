@@ -12,6 +12,7 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('DisasterRequests')
 
 def lambda_handler(event, context):
+    current_trace_id = context.aws_request_id
     try:
         path_params = event.get('pathParameters')
         req_id = path_params.get('id') if path_params else None
@@ -36,6 +37,7 @@ def lambda_handler(event, context):
         # สร้าง Dictionary ใหม่เพื่อเรียงลำดับฟิลด์และเลือกเฉพาะที่ต้องการ
         formatted_item = {
             "request_id": item.get("request_id"),
+            "trace_id": item.get("trace_id", "N/A"),
             "incident_type": item.get("incident_type", "ทั่วไป"), # เพิ่มประเภทภัย
             "status": item.get("status"),
             "description": item.get("description"),
@@ -46,16 +48,28 @@ def lambda_handler(event, context):
             "last_updated": item.get("last_updated")
         }
 
+        print(json.dumps({
+            "operation": "GET_BY_ID",
+            "request_id": req_id,
+            "trace_id": current_trace_id,
+            "status": "SUCCESS"
+        }))
+
         # ส่งกลับแบบไม่มี indent ใน json.dumps เพื่อให้เป็นบรรทัดเดียว หรือตามมาตรฐาน JSON
         return {
             "statusCode": 200,
             "headers": {
                 "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*"
+                "Access-Control-Allow-Origin": "*",
+                "X-Trace-Id": current_trace_id
             },
             # ส่งแค่ formatted_item ออกไปตรงๆ ใน body
             "body": json.dumps(formatted_item, ensure_ascii=False, cls=DecimalEncoder)
         }
 
     except Exception as e:
-        return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+        print(json.dumps({"operation": "GET_BY_ID_ERROR", "trace_id": current_trace_id, "error": str(e)}))
+        return {
+            'statusCode': 500, 
+            'body': json.dumps({'error': str(e), 'trace_id': current_trace_id}, indent=2)
+        }

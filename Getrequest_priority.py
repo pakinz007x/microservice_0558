@@ -12,6 +12,7 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('DisasterRequests')
 
 def lambda_handler(event, context):
+    current_trace_id = context.aws_request_id
     try:
         # ดึงข้อมูลทั้งหมดจากตาราง
         response = table.scan()
@@ -25,6 +26,7 @@ def lambda_handler(event, context):
         for item in items:
             simple_items.append({
                 "request_id": item.get("request_id"),
+                "trace_id": item.get("trace_id", "N/A"),
                 "incident_type": item.get("incident_type", "ทั่วไป"), # เพิ่มฟิลด์ใหม่
                 "status": item.get("status"),
                 "description": item.get("description"),
@@ -38,24 +40,30 @@ def lambda_handler(event, context):
 
         result = {
             "count": len(simple_items),
-            "data": simple_items
+            "data": simple_items,
+            "fetched_by_trace_id": current_trace_id
         }
 
         # พิมพ์ Log เพื่อตรวจสอบภาษาไทยใน CloudWatch
-        print(json.dumps(result, indent=2, ensure_ascii=False, cls=DecimalEncoder))
+        print(json.dumps({
+            "operation": "GET_ALL_REQUESTS",
+            "count": len(simple_items),
+            "trace_id": current_trace_id
+        }))
 
         return {
             "statusCode": 200,
             "headers": {
                 "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*"
+                "Access-Control-Allow-Origin": "*",
+                "X-Trace-Id": current_trace_id
             },
             "body": json.dumps(result, ensure_ascii=False, cls=DecimalEncoder, indent=4)
         }
 
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(json.dumps({"operation": "GET_ERROR", "trace_id": current_trace_id, "error": str(e)}))
         return {
             "statusCode": 500,
-            "body": json.dumps({"error": str(e)}, ensure_ascii=False)
+            "body": json.dumps({"error": str(e), "trace_id": current_trace_id})
         }
