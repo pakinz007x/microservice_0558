@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Center | Help Requests</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <h2>Priority Service</h2>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="active"><i class="fa-solid fa-inbox"></i> All Requests</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="greeting">
+                    <h1>Incident Reports</h1>
+                    <p>Manage and track incident requests from DynamoDB.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="openCreateModalBtn">
+                        <i class="fa-solid fa-plus"></i> New Report
+                    </button>
+                </div>
+            </header>
+
+            <section class="content-wrapper">
+                <!-- Filters & Search Toolbar -->
+                <div class="toolbar glass-panel">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="searchInput" placeholder="Search by Request ID, Trace ID, or Type...">
+                    </div>
+                    <div class="filter-box">
+                        <label for="sortSelect">Sort By:</label>
+                        <select id="sortSelect">
+                            <option value="newest">Newest First</option>
+                            <option value="priority-high">Priority Score (Highest)</option>
+                            <option value="priority-low">Priority Score (Lowest)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Requests List -->
+                <div class="request-grid" id="requestGrid">
+                    <!-- Cards will be populated by JS -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Create/Update Request Modal -->
+    <div class="modal" id="requestModal">
+        <div class="modal-content glass-panel" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="modalTitle">Create New Incident Report</h3>
+                <button class="close-btn" id="closeModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="requestForm">
+                    <input type="hidden" id="req_request_id">
+                    <input type="hidden" id="req_reported_time">
+
+                    <div class="form-group">
+                        <label for="req_incident_type">Incident Type (ประเภทภัย)</label>
+                        <input type="text" id="req_incident_type" placeholder="เช่น น้ำท่วม, ไฟไหม้, ดินถล่ม" required>
+                    </div>
+
+                    <div class="form-group" style="display:flex;gap:16px; align-items:flex-end;">
+                        <div style="flex:1;">
+                            <label for="req_latitude">Latitude</label>
+                            <input type="number" step="any" id="req_latitude" placeholder="พิกัดละติจูด" required>
+                        </div>
+                        <div style="flex:1;">
+                            <label for="req_longitude">Longitude</label>
+                            <input type="number" step="any" id="req_longitude" placeholder="พิกัดลองจิจูด" required>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-secondary" id="getLocationBtn"
+                                style="height: 44px; padding: 0 16px;">
+                                <i class="fa-solid fa-location-crosshairs"></i> ดึงพิกัดปัจจุบัน
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="edit_only_fields" style="display:none; gap:16px;">
+                        <div style="flex:2;">
+                            <label for="req_status">Status (สถานะ)</label>
+                            <select id="req_status" class="custom-select">
+                                <option value="New">New</option>
+                                <option value="In-Progress">In-Progress</option>
+                                <option value="Resolved">Resolved</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;">
+                            <label for="req_priority_score">Priority Score</label>
+                            <input type="number" id="req_priority_score" min="1" max="100" placeholder="1-100">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="req_description">Description (รายละเอียด)</label>
+                        <textarea id="req_description" rows="3" placeholder="เช่น น้ำท่วมชั้น 1 มีผู้ป่วยติดเตียง..."
+                            required></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveBtn">Save Record</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
